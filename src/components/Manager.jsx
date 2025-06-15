@@ -1,124 +1,107 @@
-import React, { useEffect } from "react";
-import { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { ToastContainer, toast } from "react-toastify";
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4 } from "uuid";
 
-
-export default function Manager() {
+export default function Manager({ auth }) {
   const ref = useRef();
   const passwordref = useRef();
   const [form, setform] = useState({ site: "", username: "", password: "" });
   const [passwordArray, setpasswordArray] = useState([]);
 
-  const getpasswords = async () => {
-    let req = await fetch("http://localhost:3000/");
-    let passwords = await req.json();
-    console.log("Fetched Passwords:", passwords);
-    setpasswordArray(passwords);
-    console.log("Updated Password Array:", passwordArray); // Debugging
-  };
+  // Get JWT token from localStorage
+  const token = localStorage.getItem("token");
 
+  // Fetch passwords for the logged-in user
+  const getpasswords = async () => {
+    if (!token) return;
+    let req = await fetch("http://localhost:3000/api/passwords", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    });
+    if (req.status === 401 || req.status === 403) {
+      setpasswordArray([]);
+      return;
+    }
+    let passwords = await req.json();
+    setpasswordArray(Array.isArray(passwords) ? passwords : []);
+  };
 
   useEffect(() => {
     getpasswords();
-  }, []);
+    // Refetch when auth changes (on login/logout)
+    // eslint-disable-next-line
+  }, [auth]);
 
   const copyText = (text) => {
     toast("Copied to Clipboard!", {
       position: "top-right",
       autoClose: 2000,
-      hideProgressBar: false,
-      closeOnClick: false,
-      pauseOnHover: true,
-      draggable: true,
-      progress: undefined,
       theme: "dark",
     });
     navigator.clipboard.writeText(text);
   };
 
   const savepassword = async () => {
-    if (form.id) {
-      // Editing an existing password
-      const updatedPasswordArray = passwordArray.map((item) =>
-        item.id === form.id ? form : item
-      );
-      setpasswordArray(updatedPasswordArray);
-  
-      // Send the updated password to the backend, excluding _id
-      const { _id, ...formWithoutId } = form;
-      await fetch("http://localhost:3000/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formWithoutId),
-      });
-    } else {
-      // Creating a new password
-      const newPassword = { ...form, id: uuidv4() };
-      setpasswordArray([...passwordArray, newPassword]);
-  
-      // Send the new password to the backend
-      await fetch("http://localhost:3000/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(newPassword),
-      });
-    }
-  
-    // Show a success toast notification
+    if (!token) return;
+    let url = "http://localhost:3000/api/passwords";
+    let method = "POST";
+    let body = form.id ? { ...form } : { ...form, id: uuidv4() };
+
+    await fetch(url, {
+      method,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
     toast.success("Password Saved!", {
       position: "top-right",
       autoClose: 2000,
-      hideProgressBar: false,
-      closeOnClick: false,
-      pauseOnHover: true,
-      draggable: true,
-      progress: undefined,
       theme: "dark",
     });
-  
-    // Clear the form fields after saving
     setform({ site: "", username: "", password: "" });
+    getpasswords();
   };
+
   const handlechange = (e) => {
     setform({ ...form, [e.target.name]: e.target.value });
   };
 
-  const deletepassword = async(id) => {
-    let c=confirm("Are you sure you want to delete this password?");
-    if(c){
-    setpasswordArray(passwordArray.filter(item=>item.id!==id));
-     await fetch("http://localhost:3000/", {method: "DELETE", headers: {"Content-Type": "application/json"}, body: JSON.stringify({id})
-    });
-    toast.error("Password Deleted!", {
-      position: "top-right",
-      autoClose: 2000,
-      hideProgressBar: false,
-      closeOnClick: false,
-      pauseOnHover: true,
-      draggable: true,
-      progress: undefined,
-      theme: "dark",
-    });
+  const deletepassword = async (id) => {
+    if (!token) return;
+    let c = window.confirm("Are you sure you want to delete this password?");
+    if (c) {
+      await fetch(`http://localhost:3000/api/passwords/${id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
+      toast.error("Password Deleted!", {
+        position: "top-right",
+        autoClose: 2000,
+        theme: "dark",
+      });
+      getpasswords();
     }
   };
 
   const editpassword = (id) => {
     const passwordToEdit = passwordArray.find((item) => item.id === id);
-    setform(passwordToEdit); // Set the form with the selected password's data
+    setform(passwordToEdit);
   };
 
-
   const showpassword = () => {
-    passwordref.current.type = "text";
-    console.log(ref.current.src);
-    if (ref.current.src.includes("src/assets/hidden.png")) {
-      ref.current.src = "src/assets/eye.png";
-      passwordref.current.type = "password";
-    } else {
-      ref.current.src = "src/assets/hidden.png";
-      passwordref.current.type = "text";
-    }
+    passwordref.current.type =
+      passwordref.current.type === "password" ? "text" : "password";
+    ref.current.src = ref.current.src.includes("hidden.png")
+      ? "src/assets/eye.png"
+      : "src/assets/hidden.png";
   };
 
   return (
@@ -205,7 +188,7 @@ export default function Manager() {
         <div className="passwords text-white">
           <h1 className="text-2xl mb-5">Your Passwords</h1>
           {passwordArray.length === 0 && <div>No Passwords To Show</div>}
-          {passwordArray.length != 0 && (
+          {passwordArray.length !== 0 && (
             <table className="table-auto w-full rounded-md overflow-hidden">
               <thead>
                 <tr>
@@ -220,7 +203,11 @@ export default function Manager() {
                   return (
                     <tr key={index}>
                       <td className="py-1 text-center bg-blue-200 text-black w-32">
-                        <a href={item.site} target="_blank">
+                        <a
+                          href={item.site}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
                           {item.site}
                         </a>
                         <lord-icon
@@ -258,17 +245,17 @@ export default function Manager() {
                         ></lord-icon>
                       </td>
                       <td className="text-center bg-blue-200 text-black w-32">
-                        <span onClick={()=> deletepassword(item.id)}>
+                        <span onClick={() => deletepassword(item.id)}>
                           <lord-icon
-                          className={"w-5 mx-1 py-2.5 cursor-pointer"}
+                            className={"w-5 mx-1 py-2.5 cursor-pointer"}
                             src="https://cdn.lordicon.com/skkahier.json"
                             trigger="hover"
                             colors="primary:#000000"
                           ></lord-icon>
                         </span>
-                        <span onClick={()=> editpassword(item.id)}>
+                        <span onClick={() => editpassword(item.id)}>
                           <lord-icon
-                          className={"w-5 mx-1 py-2.5 cursor-pointer"}
+                            className={"w-5 mx-1 py-2.5 cursor-pointer"}
                             src="https://cdn.lordicon.com/ogkflacg.json"
                             trigger="hover"
                             colors="primary:#000000"
