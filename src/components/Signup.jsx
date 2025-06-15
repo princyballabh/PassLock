@@ -7,7 +7,7 @@ export default function Signup({ onSwitch }) {
   const [loading, setLoading] = useState(false);
 
   // Get backend API URL from environment variable
-  const API_URL = process.env.REACT_APP_API_URL;
+  const API_URL = import.meta.env.VITE_REACT_APP_API_URL;
 
   const handleSubmit = async (e) => {
     e.preventDefault();

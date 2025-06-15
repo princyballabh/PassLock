@@ -11,7 +11,7 @@ export default function Manager({ auth }) {
   // Get JWT token from localStorage
   const token = localStorage.getItem("token");
   // Get backend API URL from environment variable
-  const API_URL = process.env.REACT_APP_API_URL;
+  const API_URL = import.meta.env.VITE_REACT_APP_API_URL;
 
   // Fetch passwords for the logged-in user
   const getpasswords = async () => {
