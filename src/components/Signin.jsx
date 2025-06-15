@@ -5,11 +5,14 @@ export default function Signin({ setAuth, onSwitch }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
+  // Get backend API URL from environment variable
+  const API_URL = process.env.REACT_APP_API_URL;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     try {
-      const res = await fetch("http://localhost:3000/api/login", {
+      const res = await fetch(`${API_URL}/api/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),

@@ -10,11 +10,13 @@ export default function Manager({ auth }) {
 
   // Get JWT token from localStorage
   const token = localStorage.getItem("token");
+  // Get backend API URL from environment variable
+  const API_URL = process.env.REACT_APP_API_URL;
 
   // Fetch passwords for the logged-in user
   const getpasswords = async () => {
     if (!token) return;
-    let req = await fetch("http://localhost:3000/api/passwords", {
+    let req = await fetch(`${API_URL}/api/passwords`, {
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
@@ -45,7 +47,7 @@ export default function Manager({ auth }) {
 
   const savepassword = async () => {
     if (!token) return;
-    let url = "http://localhost:3000/api/passwords";
+    let url = `${API_URL}/api/passwords`;
     let method = "POST";
     let body = form.id ? { ...form } : { ...form, id: uuidv4() };
 
@@ -75,7 +77,7 @@ export default function Manager({ auth }) {
     if (!token) return;
     let c = window.confirm("Are you sure you want to delete this password?");
     if (c) {
-      await fetch(`http://localhost:3000/api/passwords/${id}`, {
+      await fetch(`${API_URL}/api/passwords/${id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
